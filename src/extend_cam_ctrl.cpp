@@ -612,9 +612,6 @@ void start_camera(struct device *dev)
 		printf("Couldn't start camera streaming\n");
 		return;
 	}
-	mmap_variables();
-	initialize_shared_memory_var();
-	return;
 }
 
 /**
@@ -860,27 +857,26 @@ void streaming_loop(struct device *dev, int socket)
 	image_count = 0;
 	set_restart_flag(0);
 	set_loop(1);
-
+	initialize_shared_memory_var();
 	while (*loop)
 	{
-		// after *restart again. it seems new opencv window couldn't
-		// pick up commands from GUI
 		if (*restart)
 		{
 			int tmp_nbufs = dev->nbufs; /// save a tmp nbufs
 			set_restart_flag(0);		/// reset restart flag
 			stop_Camera(dev);			/// stream off
 			video_free_buffers(dev);	/// free buffer
-			cv::destroyWindow(window_name);
+
+			//cv::destroyWindow(window_name); // so the window don't resize
 
 			std::vector<std::string> elem =
 				split(resolutions[*res_index], 'x');
 			dev->width = stoi(elem[0]);
 			dev->height = stoi(elem[1]);
 			dev->nbufs = tmp_nbufs;
-			video_set_format(dev); /// update the resolution etc
+			video_set_format(dev); 		/// update the resolution etc
 			check_dev_cap(dev->fd);
-			get_frame_rate(dev->fd); /// list the current frame rate
+			get_frame_rate(dev->fd); 	/// list the current frame rate
 			cur_frame_rates = get_frame_rates(dev);
 
 			video_alloc_buffers(dev);

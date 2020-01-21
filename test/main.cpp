@@ -206,11 +206,11 @@ int main(int argc, char **argv)
 		individual_sensor_test(dev.fd);
 
 		video_alloc_buffers(&dev);
-		
+
 		printf("********************Control Logs*****************************\n");
 		/** Activate streaming */
 		start_camera(&dev); 	// need to be put before fork for shared memory
-
+		mmap_variables();		// before fork for shared memory
 		int socket_pair[2];
       	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, socket_pair) < 0) {
 	    	std::cout << "socketpair failed" << std::endl;
