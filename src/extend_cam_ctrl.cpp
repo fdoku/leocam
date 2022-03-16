@@ -1338,6 +1338,7 @@ static void group_gpu_image_proc(cv::InputOutputArray opencvImage) {
 
  *
  */
+int counter{0};
 void decode_process_a_frame(struct device* dev, const void* p,
                             double* cur_time) {
   int height = dev->height;
@@ -1388,6 +1389,7 @@ void decode_process_a_frame(struct device* dev, const void* p,
           *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
+    std::cout << "Getting image here " << __LINE__ << std::endl;
     share_img = img;
   }
 
@@ -1406,6 +1408,7 @@ void decode_process_a_frame(struct device* dev, const void* p,
       cv::cvtColor(img, img, cv::COLOR_YUV2BGR_YUY2);
       if (*bayer_flag == CV_MONO_FLG && img.type() != CV_8UC1)
         cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
+      std::cout << "Getting image here " << __LINE__ << std::endl;
       share_img = img;
     }
   }
@@ -1415,6 +1418,8 @@ void decode_process_a_frame(struct device* dev, const void* p,
   group_gpu_image_proc(gpu_img);
   gpu_img.download(share_img);
 #else
+  std::cout << "Getting image here " << __LINE__ << std::endl;
+
   group_gpu_image_proc(share_img);
 #endif
 
@@ -1444,8 +1449,11 @@ void decode_process_a_frame(struct device* dev, const void* p,
   if (width >= CROPPED_WIDTH || height >= CROPPED_HEIGHT)
     cv::resizeWindow(window_name, CROPPED_WIDTH, CROPPED_HEIGHT);
   if (*display_info_ena) display_current_mat_stream_info(share_img, cur_time);
-  if (share_img.rows > 0 && share_img.cols > 0)
+  if (share_img.rows > 0 && share_img.cols > 0) {
     cv::imshow(window_name, share_img);
+
+    ++counter;
+  }
   switch_on_keys();
 }
 
