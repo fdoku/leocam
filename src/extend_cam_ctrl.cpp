@@ -1403,7 +1403,7 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
           *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
-    share_img = img;
+    share_img = img.clone();
   }
 
   /** --- for yuv camera ---*/
@@ -1421,7 +1421,7 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
       cv::cvtColor(img, img, cv::COLOR_YUV2BGR_YUY2);
       if (*bayer_flag == CV_MONO_FLG && img.type() != CV_8UC1)
         cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
-      share_img = img;
+      share_img = img.clone();
     }
   }
 }
