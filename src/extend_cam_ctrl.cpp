@@ -1403,6 +1403,8 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
           *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
+    cv::imshow("testing", img);
+    cv::waitKey(1);
     share_img = img.clone();
   }
 
