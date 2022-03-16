@@ -1326,6 +1326,75 @@ static void group_gpu_image_proc(cv::InputOutputArray opencvImage) {
 
   if (*show_edge_flag) canny_filter_control(opencvImage, *edge_low_thres);
 }
+
+void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
+                           cv::Mat& share_img) {
+  int height = dev->height;
+  int width = dev->width;
+  int shift = set_shift(*bpp);
+
+  if (*soft_ae_flag) apply_soft_ae(dev, p);
+  if (*save_raw) v4l2_core_save_data_to_file(p, dev->imagesize);
+
+  /** --- for raw8, raw10, raw12 bayer camera ---*/
+  if (shift != 0) {
+    if (*rgb_gainoffset_flg) apply_rgb_gain_offset_pre_debayer(dev, p);
+    if (*rgb_ir_color) apply_color_correction_rgb_ir(dev, p);
+    if (*rgb_ir_ir) display_rgbir_ir_channel(dev, p);
+    /**
+		 * --- for raw10, raw12 camera ---
+		 * tried with CV_16UC1 and then cast back, it doesn't really improve fps
+		 * I guess use openmp is already efficient enough
+		 */
+    if (shift > 0) perform_shift(dev, p, shift);
+
+    /**
+		 *  --- for raw8 camera ---
+		 * each pixel is 8-bit instead of 16-bit now
+		 * need to adjust read width
+		 */
+    else
+      width = width * 2;
+
+    //swap_two_bytes(dev, p);
+    cv::Mat img(height, width, CV_8UC1, (void*)p);
+#ifdef HAVE_OPENCV_CUDA_SUPPORT
+    gpu_img.upload(img);
+    debayer_awb_a_frame(gpu_img, *bayer_flag, *awb_flag);
+    gpu_img.download(img);
+#else
+    debayer_awb_a_frame(img, *bayer_flag, *awb_flag);
+#endif
+
+    if (*rgb_matrix_flg) {
+      //Timer timer;
+      int ccm[3][3] = {{*rr, *rg, *rb}, {*gr, *gg, *gb}, {*br, *bg, *bb}};
+      if (*rr == 256 && *rg == 0 && *rb == 0 && *gr == 0 && *gg == 256 &&
+          *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
+        apply_rgb_matrix_post_debayer(img, (int*)ccm);
+    }
+    share_img = img;
+  }
+
+  /** --- for yuv camera ---*/
+  else if (shift == 0) {
+    if (dev->pixelformat == 0x47504a4d) {
+      cv::Mat inputMat(height, width, CV_8UC3, (void*)p);
+      cv::Mat img;
+      img = cv::imdecode(inputMat, cv::IMREAD_COLOR);
+      if (img.data == NULL) {
+        printf("NULL in mjpeg image\r\n");
+      }
+      share_img = img;
+    } else {
+      cv::Mat img(height, width, CV_8UC2, (void*)p);
+      cv::cvtColor(img, img, cv::COLOR_YUV2BGR_YUY2);
+      if (*bayer_flag == CV_MONO_FLG && img.type() != CV_8UC1)
+        cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
+      share_img = img;
+    }
+  }
+}
 /**
  * OpenCV only support debayering 8 and 16 bits
  *
@@ -1338,7 +1407,6 @@ static void group_gpu_image_proc(cv::InputOutputArray opencvImage) {
 
  *
  */
-int counter{0};
 void decode_process_a_frame(struct device* dev, const void* p,
                             double* cur_time) {
   int height = dev->height;
@@ -1390,8 +1458,6 @@ void decode_process_a_frame(struct device* dev, const void* p,
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
     share_img = img;
-    cv::imshow(window_name, share_img);
-
   }
 
   /** --- for yuv camera ---*/
@@ -1409,7 +1475,6 @@ void decode_process_a_frame(struct device* dev, const void* p,
       cv::cvtColor(img, img, cv::COLOR_YUV2BGR_YUY2);
       if (*bayer_flag == CV_MONO_FLG && img.type() != CV_8UC1)
         cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
-      std::cout << "Getting image here " << __LINE__ << std::endl;
       share_img = img;
     }
   }
@@ -1449,9 +1514,7 @@ void decode_process_a_frame(struct device* dev, const void* p,
     cv::resizeWindow(window_name, CROPPED_WIDTH, CROPPED_HEIGHT);
   if (*display_info_ena) display_current_mat_stream_info(share_img, cur_time);
   if (share_img.rows > 0 && share_img.cols > 0) {
-    // cv::imshow(window_name, share_img);
-
-    ++counter;
+    cv::imshow(window_name, share_img);
   }
   switch_on_keys();
 }
