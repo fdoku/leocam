@@ -1389,7 +1389,7 @@ void decode_process_a_frame(struct device* dev, const void* p,
           *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
-    share_img = img.clone();
+    share_img = img;
     cv::imshow(window_name, share_img);
 
   }
