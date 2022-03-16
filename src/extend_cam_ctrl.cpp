@@ -1389,8 +1389,7 @@ void decode_process_a_frame(struct device* dev, const void* p,
           *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
-    std::cout << "Getting image here " << __LINE__ << std::endl;
-    share_img = img;
+    share_img = img.clone();
   }
 
   /** --- for yuv camera ---*/
@@ -1418,8 +1417,6 @@ void decode_process_a_frame(struct device* dev, const void* p,
   group_gpu_image_proc(gpu_img);
   gpu_img.download(share_img);
 #else
-  std::cout << "Getting image here " << __LINE__ << std::endl;
-
   group_gpu_image_proc(share_img);
 #endif
 
