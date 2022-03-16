@@ -1390,6 +1390,8 @@ void decode_process_a_frame(struct device* dev, const void* p,
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
     share_img = img.clone();
+    cv::imshow(window_name, share_img);
+
   }
 
   /** --- for yuv camera ---*/
@@ -1447,7 +1449,7 @@ void decode_process_a_frame(struct device* dev, const void* p,
     cv::resizeWindow(window_name, CROPPED_WIDTH, CROPPED_HEIGHT);
   if (*display_info_ena) display_current_mat_stream_info(share_img, cur_time);
   if (share_img.rows > 0 && share_img.cols > 0) {
-    cv::imshow(window_name, share_img);
+    // cv::imshow(window_name, share_img);
 
     ++counter;
   }
