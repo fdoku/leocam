@@ -776,6 +776,32 @@ void streaming_loop(struct device* dev, int socket) {
   close(v4l2_dev); /// close device
 }
 
+void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output) {
+  for (size_t i = 0; i < dev->nbufs; i++) {
+    /// time measured in OpenCV for fps
+    double cur;
+    tic(cur);
+    double* cur_time = &cur;
+    queuebuffer.index = i;
+
+    /// The buffer's waiting in the outgoing queue
+    if (ioctl(dev->fd, VIDIOC_DQBUF, &queuebuffer) < 0) {
+      perror("VIDIOC_DQBUF");
+      return;
+    }
+    cv::Mat output_mat;
+    decode_and_process_p1(dev, dev->buffers[i].start, cur_time, output_mat);
+
+    output(output_mat);
+    if (ioctl(dev->fd, VIDIOC_QBUF, &queuebuffer) < 0) {
+      perror("VIDIOC_QBUF");
+      return;
+    }
+  }
+
+  return;
+}
+
 /**
  * Typically start two loops:
  * 1. runs for as long as you want to
@@ -798,8 +824,6 @@ void get_a_frame(struct device* dev) {
       perror("VIDIOC_DQBUF");
       return;
     }
-
-    std::cout << dev->nbufs << std::endl;
 
     decode_process_a_frame(dev, dev->buffers[i].start, cur_time);
 
