@@ -128,7 +128,8 @@ std::vector<int> get_frame_rates(struct device* dev);
 
 void streaming_loop(struct device* dev, int socket);
 
-void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output);
+void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output,
+                    int pyr_lvl);
 void get_a_frame(struct device* dev);
 
 void soft_ae_enable(int enable);

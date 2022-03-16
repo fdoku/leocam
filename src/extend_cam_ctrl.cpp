@@ -776,7 +776,8 @@ void streaming_loop(struct device* dev, int socket) {
   close(v4l2_dev); /// close device
 }
 
-void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output) {
+void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output,
+                    int pyr_lvl) {
   for (size_t i = 0; i < dev->nbufs; i++) {
     /// time measured in OpenCV for fps
     double cur;
@@ -792,6 +793,9 @@ void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output) {
     cv::Mat output_mat;
     decode_and_process_p1(dev, dev->buffers[i].start, cur_time, output_mat);
 
+    for (int i = 0; i < pyr_lvl; ++i) {
+      cv::pyrDown(output_mat, output_mat);
+    }
     output(output_mat);
     if (ioctl(dev->fd, VIDIOC_QBUF, &queuebuffer) < 0) {
       perror("VIDIOC_QBUF");
