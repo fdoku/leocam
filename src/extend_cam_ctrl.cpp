@@ -130,13 +130,13 @@ void video_change_res(int resolution_index) {
 void enable_wrapper(int* flag, int enable) {
   switch (enable) {
     case 1:
-      *flag = TRUE;
+      *flag = true;
       break;
     case 0:
-      *flag = FALSE;
+      *flag = false;
       break;
     default:
-      *flag = FALSE;
+      *flag = false;
       break;
   }
 }
@@ -460,7 +460,7 @@ void initialize_shared_memory_var() {
   } else {
     *bayer_flag = CV_BayerBG2BGR_FLG;
   }
-  *display_info_ena = TRUE;
+  *display_info_ena = true;
   *alpha = 1;
   *beta = 0;
   *sharpness = 1;
@@ -876,18 +876,18 @@ void apply_soft_ae(struct device* dev, const void* p) {
   int max_gain = MAX_GAIN;
   float target_mean = (float)SETBIT(0x01, (*bpp) - 2) * TARGET_MEAN_FACTOR;
   float image_mean = calc_mean(dev, p);
-  int ae_done = FALSE;
+  int ae_done = false;
 
   if (((image_mean > target_mean * 0.8) && (image_mean < target_mean * 1.2)) ||
       ((cur_gain_x_exp >= max_exp_time * max_gain) &&
        (image_mean < target_mean * 0.8)) ||
       ((cur_gain_x_exp <= max_exp_time * min_gain) &&
        (image_mean > target_mean * 1.2))) {
-    ae_done = TRUE;
+    ae_done = true;
     return;
   }
 
-  ae_done = FALSE;
+  ae_done = false;
   int cal_exp_x_gain = (int)(cur_gain_x_exp * (target_mean / image_mean));
   cur_gain_x_exp = (cur_gain_x_exp + cal_exp_x_gain) / 2;
 
