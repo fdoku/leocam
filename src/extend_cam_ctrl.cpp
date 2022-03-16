@@ -799,6 +799,8 @@ void get_a_frame(struct device* dev) {
       return;
     }
 
+    std::cout << dev->nbufs << std::endl;
+
     decode_process_a_frame(dev, dev->buffers[i].start, cur_time);
 
     if (ioctl(dev->fd, VIDIOC_QBUF, &queuebuffer) < 0) {
