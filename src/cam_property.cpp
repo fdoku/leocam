@@ -198,6 +198,7 @@ void set_exposure_absolute(int fd, int exposure_absolute)
         uvc_set_control(fd, V4L2_CID_EXPOSURE_ABSOLUTE, exposure_absolute);
     }
 }
+
 int get_exposure_absolute(int fd)
 {
     *cur_exposure = (int)uvc_get_control(fd, V4L2_CID_EXPOSURE_ABSOLUTE);

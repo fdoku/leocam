@@ -42,6 +42,9 @@
  *  Last edit: 2020/01
  *****************************************************************************/
 #include <omp.h> /**for openmp */
+#include <memory>
+#include <iostream>
+
 #include "../includes/batch_cmd_parser.h"
 #include "../includes/cam_property.h"
 #include "../includes/extend_cam_ctrl.h"
@@ -456,6 +459,7 @@ void initialize_shared_memory_var() {
     *bpp = set_bpp(get_li_datatype());
 
   if (strcmp(get_product(), "LI-AR0234_raw") == 0) {
+    // *bayer_flag = CV_BayerGB2BGR_FLG;
     *bayer_flag = CV_MONO_FLG;
   } else {
     *bayer_flag = CV_BayerBG2BGR_FLG;
@@ -776,31 +780,47 @@ void streaming_loop(struct device* dev, int socket) {
   close(v4l2_dev); /// close device
 }
 
-void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output,
-                    int pyr_lvl) {
+void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&, double)> output, int pyr_lvl) {
+
+  
   for (size_t i = 0; i < dev->nbufs; i++) {
     /// time measured in OpenCV for fps
     double cur;
     tic(cur);
     double* cur_time = &cur;
     queuebuffer.index = i;
+    
 
     /// The buffer's waiting in the outgoing queue
     if (ioctl(dev->fd, VIDIOC_DQBUF, &queuebuffer) < 0) {
       perror("VIDIOC_DQBUF");
       return;
     }
-    cv::Mat output_mat;
-    decode_and_process_p1(dev, dev->buffers[i].start, cur_time, output_mat);
+  
 
-    for (int i = 0; i < pyr_lvl; ++i) {
-      cv::pyrDown(output_mat, output_mat);
-    }
-    output(output_mat);
+    double tictoc = toc(cur);
+    cv::Mat output_mat;
+    
+  
+    decode_and_process_p1(dev, dev->buffers[i].start, output_mat);
+  
+    // if (tictoc < 0.035){
+    output(output_mat, *cur_time);
+    // }
+    // if (tictoc > 0.04){
+    //   std::cout << std::fixed << "DT over 0.04: " << tictoc<< std::endl;
+    // }
+  
+    
+    // FPS
+    // for (int i = 0; i < pyr_lvl; ++i) {
+    //   cv::pyrDown(output_mat, output_mat);
+    // }
     if (ioctl(dev->fd, VIDIOC_QBUF, &queuebuffer) < 0) {
       perror("VIDIOC_QBUF");
       return;
     }
+  
   }
 
   return;
@@ -933,8 +953,9 @@ void apply_soft_ae(struct device* dev, const void* p) {
     local_exposure = (int)local_exposure * (target_mean / image_mean);
   }
   cur_gain_x_exp = local_exposure * local_gain;
-  set_exposure_absolute(dev->fd, local_exposure);
+  std::cout << std::fixed << "Computed exposure/gain " << local_exposure << " " << local_gain << std::endl;
   set_gain(dev->fd, local_gain);
+  set_exposure_absolute(dev->fd, local_exposure);
 }
 
 /**
@@ -1209,6 +1230,38 @@ void apply_rgb_gain_offset_pre_debayer(struct device* dev, const void* p) {
       }
       break;
     case CV_MONO_FLG:
+      // for (int i = 0; i < height; i += 2) {
+      //   for (int j = 0; j < width; j += 2) {
+      //     // G
+      //     tmp = src_short[PIX(j, i, width)];
+      //     tmp = set_limit(tmp, pixel_max_val, 0);
+      //     itmp = tmp + *g_offset;
+      //     itmp = (itmp * (*g_gain)) / GAIN_FACTOR;
+      //     itmp = set_limit(itmp, pixel_max_val, 0);
+      //     dst[PIX(j, i, width)] = itmp;
+      //     // B
+      //     tmp = src_short[RIGHT(j, i, width)];
+      //     tmp = set_limit(tmp, pixel_max_val, 0);
+      //     itmp = tmp + *b_offset;
+      //     itmp = (itmp * (*b_gain)) / GAIN_FACTOR;
+      //     itmp = set_limit(itmp, pixel_max_val, 0);
+      //     dst[RIGHT(j, i, width)] = itmp;
+      //     // R
+      //     tmp = src_short[BOTTOM(j, i, width)];
+      //     tmp = set_limit(tmp, pixel_max_val, 0);
+      //     itmp = tmp + *r_offset;
+      //     itmp = (itmp * (*r_gain)) / GAIN_FACTOR;
+      //     itmp = set_limit(itmp, pixel_max_val, 0);
+      //     dst[BOTTOM(j, i, width)] = itmp;
+      //     // G
+      //     tmp = src_short[BOTTOM_RIGHT(j, i, width)];
+      //     tmp = set_limit(tmp, pixel_max_val, 0);
+      //     itmp = tmp + *g_offset;
+      //     itmp = (itmp * (*g_gain)) / GAIN_FACTOR;
+      //     itmp = set_limit(itmp, pixel_max_val, 0);
+      //     dst[BOTTOM_RIGHT(j, i, width)] = itmp;
+      //   }
+      // }
       break;
     default:
       break;
@@ -1357,17 +1410,28 @@ static void group_gpu_image_proc(cv::InputOutputArray opencvImage) {
   if (*show_edge_flag) canny_filter_control(opencvImage, *edge_low_thres);
 }
 
-void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
+void decode_and_process_p1(struct device* dev, const void* p,
                            cv::Mat& share_img) {
   int height = dev->height;
   int width = dev->width;
   int shift = set_shift(*bpp);
 
+  
+    
+
+
   if (*soft_ae_flag) apply_soft_ae(dev, p);
   if (*save_raw) v4l2_core_save_data_to_file(p, dev->imagesize);
+  
+  
 
   /** --- for raw8, raw10, raw12 bayer camera ---*/
   if (shift != 0) {
+    
+      cv::Mat pre_img(height, width, CV_8UC1, (void*)p);
+
+    cv::imshow("FUCK", pre_img);
+    cv::waitKey(1);
     if (*rgb_gainoffset_flg) apply_rgb_gain_offset_pre_debayer(dev, p);
     if (*rgb_ir_color) apply_color_correction_rgb_ir(dev, p);
     if (*rgb_ir_ir) display_rgbir_ir_channel(dev, p);
@@ -1385,9 +1449,14 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
 		 */
     else
       width = width * 2;
+  
 
-    //swap_two_bytes(dev, p);
+
+  
+    
+    // swap_two_bytes(dev, p);
     cv::Mat img(height, width, CV_8UC1, (void*)p);
+
 #ifdef HAVE_OPENCV_CUDA_SUPPORT
     gpu_img.upload(img);
     debayer_awb_a_frame(gpu_img, *bayer_flag, *awb_flag);
@@ -1395,6 +1464,8 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
 #else
     debayer_awb_a_frame(img, *bayer_flag, *awb_flag);
 #endif
+  
+  
 
     if (*rgb_matrix_flg) {
       //Timer timer;
@@ -1403,13 +1474,12 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
           *gb == 0 && *br == 0 && *bg == 0 && *bb == 256)
         apply_rgb_matrix_post_debayer(img, (int*)ccm);
     }
-    cv::imshow("testing", img);
-    cv::waitKey(1);
-    share_img = img.clone();
+    share_img = img;  
   }
 
   /** --- for yuv camera ---*/
   else if (shift == 0) {
+  
     if (dev->pixelformat == 0x47504a4d) {
       cv::Mat inputMat(height, width, CV_8UC3, (void*)p);
       cv::Mat img;
@@ -1417,15 +1487,16 @@ void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
       if (img.data == NULL) {
         printf("NULL in mjpeg image\r\n");
       }
-      share_img = img;
+      share_img = inputMat;
     } else {
       cv::Mat img(height, width, CV_8UC2, (void*)p);
       cv::cvtColor(img, img, cv::COLOR_YUV2BGR_YUY2);
       if (*bayer_flag == CV_MONO_FLG && img.type() != CV_8UC1)
         cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
-      share_img = img.clone();
+      share_img = img;
     }
   }
+    
 }
 /**
  * OpenCV only support debayering 8 and 16 bits
@@ -1535,10 +1606,10 @@ void decode_process_a_frame(struct device* dev, const void* p,
   if (*separate_dual)
     display_dual_stereo_separately(share_img);
   else {
-    cv::namedWindow("cam_left");
-    cv::namedWindow("cam_right");
-    cv::destroyWindow("cam_left");
-    cv::destroyWindow("cam_right");
+    //cv::namedWindow("cam_left");
+    //cv::namedWindow("cam_right");
+    //cv::destroyWindow("cam_left");
+    //cv::destroyWindow("cam_right");
   }
   /** if image larger than 720p by any dimension, resize the window */
   //if (*resize_window_ena)
@@ -1831,3 +1902,23 @@ int video_free_buffers(struct device* dev) {
  * callback for exit streaming from gui
  */
 void set_loop(int exit) { *loop = exit; }
+
+void p1_set_exposure(int exposure){
+  *cur_exposure = exposure;
+}
+
+void p1_set_gain(int gain){
+  *cur_gain  = gain;
+}
+
+int p1_get_exposure(){
+  return *cur_exposure;
+}
+
+int p1_get_gain(){
+  return *cur_gain;
+}
+
+void p1_enable_soft_ae(bool soft_ae){
+  *soft_ae_flag = soft_ae;
+}

@@ -832,7 +832,7 @@ void debayer_awb_a_frame(
 #else
 		cv::cvtColor(opencvImage, opencvImage,
 			cv::COLOR_BayerBG2BGR + bayer_flg);
-	
+		cv::cvtColor(opencvImage, opencvImage, cv::COLOR_BGR2GRAY);	
 #endif
 		if (awb_flg)
 		{	
@@ -848,7 +848,7 @@ void debayer_awb_a_frame(
 			cv::cuda::cvtColor(opencvImage, opencvImage, cv::COLOR_BGR2GRAY);
 #else
 			cv::cvtColor(opencvImage, opencvImage, cv::COLOR_BayerBG2BGR);
-			cv::cvtColor(opencvImage, opencvImage, cv::COLOR_BGR2GRAY);	
+			cv::cvtColor(opencvImage, opencvImage, cv::COLOR_BGR2GRAY);
 #endif
 	}
 

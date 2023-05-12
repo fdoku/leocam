@@ -49,7 +49,7 @@
 #define MAX_EXP_TIME_FACTOR (4)
 #define MIN_GAIN (8)
 #define MAX_GAIN (63)
-#define TARGET_MEAN_FACTOR (1.2)
+#define TARGET_MEAN_FACTOR (2.0)
 #define ROI_SIZE (256)
 
 /**
@@ -161,7 +161,7 @@
  * exposure, gain since mmap will allocate buffers to cover more
  * frames.
  */
-#define V4L_BUFFERS_DEFAULT (2)
+#define V4L_BUFFERS_DEFAULT (1)
 #define V4L_BUFFERS_MAX (32)
 
 /** --- for LI_XU_GENERIC_I2C_RW --- */

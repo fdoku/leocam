@@ -27,15 +27,15 @@
  * Author: Danyu L
  * Last edit: 2019/10
  *****************************************************************************/
-#include <getopt.h>
 #include "../includes/shortcuts.h"
 #include "../includes/utility.h"
+#include <getopt.h>
 
 #include "../includes/batch_cmd_parser.h"
 #include "../includes/cam_property.h"
 #include "../includes/extend_cam_ctrl.h"
 #include "../includes/fd_socket.h"
-#include "../includes/json_parser.h"
+// #include "../includes/json_parser.h"
 #include "../includes/ui_control.h"
 #include "../includes/uvc_extension_unit_ctrl.h"
 #include "../includes/v4l2_devices.h"
@@ -69,9 +69,9 @@ void individual_sensor_test(int fd) {
 #endif
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   {
-    Timer timer; /** measure time spent in this scope and print out once out*/
+    Timer timer;  /** measure time spent in this scope and print out once out*/
     int v4l2_dev; /** global variable, file descriptor for camera device */
     struct device dev;
     dev.nbufs = V4L_BUFFERS_DEFAULT;
@@ -86,67 +86,69 @@ int main(int argc, char** argv) {
     printf("********************Camera Tool Usages***********************\n");
     while ((choice = getopt_long(argc, argv, "n:s:t:d:h", opts, NULL)) != -1) {
       switch (choice) {
-        case 'n': {
-          /** set buffer number */
-          dev.nbufs = atoi(optarg);
-          if (dev.nbufs > V4L_BUFFERS_MAX) dev.nbufs = V4L_BUFFERS_MAX;
-          printf("device nbuf %d\n", dev.nbufs);
-          break;
+      case 'n': {
+        /** set buffer number */
+        dev.nbufs = atoi(optarg);
+        if (dev.nbufs > V4L_BUFFERS_MAX)
+          dev.nbufs = V4L_BUFFERS_MAX;
+        printf("device nbuf %d\n", dev.nbufs);
+        break;
+      }
+      case 's': {
+        do_set_format = 1;
+        char *endptr;
+        dev.width = strtol(optarg, &endptr, 10);
+        if (*endptr != 'x' || endptr == optarg) {
+          printf("Invalid size '%s'\n", optarg);
+          return 1;
         }
-        case 's': {
-          do_set_format = 1;
-          char* endptr;
-          dev.width = strtol(optarg, &endptr, 10);
-          if (*endptr != 'x' || endptr == optarg) {
-            printf("Invalid size '%s'\n", optarg);
-            return 1;
-          }
-          dev.height = strtol(endptr + 1, &endptr, 10);
-          if (*endptr != 0) {
-            printf("Invalid size '%s'\n", optarg);
-            return 1;
-          }
-          break;
+        dev.height = strtol(endptr + 1, &endptr, 10);
+        if (*endptr != 0) {
+          printf("Invalid size '%s'\n", optarg);
+          return 1;
         }
-        case 't': {
-          do_set_time_per_frame = 1;
-          time_per_frame = atoi(optarg);
-          break;
-        }
-        case 'd': {
-          char* dev_number = optarg;
-          if (dev_number[0] >= '0' && dev_number[0] <= '9' &&
-              strlen(dev_number) <= 3)
-            sprintf(dev_name, "/dev/video%s", dev_number);
-          else if (strstr(dev_number, "/dev/video") &&
-                   dev_number[strlen(dev_number) - 1] >= '0' &&
-                   dev_number[strlen(dev_number) - 1] <= '9')
-            strcpy(dev_name, dev_number);
-          else {
-            printf("Invalid argument: %s\n", dev_number);
-            usage(argv[0]);
-            exit(EXIT_FAILURE);
-          }
-
-          printf("ret dev name = %s\r\n", dev_name);
-          update_dev_info(dev_name);
-          break;
-        }
-        case 'h': {
+        break;
+      }
+      case 't': {
+        do_set_time_per_frame = 1;
+        time_per_frame = atoi(optarg);
+        break;
+      }
+      case 'd': {
+        char *dev_number = optarg;
+        if (dev_number[0] >= '0' && dev_number[0] <= '9' &&
+            strlen(dev_number) <= 3)
+          sprintf(dev_name, "/dev/video%s", dev_number);
+        else if (strstr(dev_number, "/dev/video") &&
+                 dev_number[strlen(dev_number) - 1] >= '0' &&
+                 dev_number[strlen(dev_number) - 1] <= '9')
+          strcpy(dev_name, dev_number);
+        else {
+          printf("Invalid argument: %s\n", dev_number);
           usage(argv[0]);
-          exit(0);
-        }
-        default: {
-          printf("Invalid option -%c\n", choice);
-          usage(argv[0]);
-          printf("Run %s -h for help.\n", argv[0]);
-          /// refer to cat /usr/includes/sysexits.h for exit code
           exit(EXIT_FAILURE);
         }
+
+        printf("ret dev name = %s\r\n", dev_name);
+        update_dev_info(dev_name);
+        break;
+      }
+      case 'h': {
+        usage(argv[0]);
+        exit(0);
+      }
+      default: {
+        printf("Invalid option -%c\n", choice);
+        usage(argv[0]);
+        printf("Run %s -h for help.\n", argv[0]);
+        /// refer to cat /usr/includes/sysexits.h for exit code
+        exit(EXIT_FAILURE);
+      }
       }
     }
 
-    if (optind >= argc) usage(argv[0]);
+    if (optind >= argc)
+      usage(argv[0]);
 
     v4l2_dev = open_v4l2_device(dev_name, &dev);
     if (v4l2_dev < 0) {
@@ -156,22 +158,25 @@ int main(int argc, char** argv) {
 
     printf("********************List Available Resolutions***************\n");
     /**
-	 	 * list all the resolutions
-	 	 * run a v4l2-ctl --list-formats-ext
-	 	 * to see the resolution and available frame rate
-	 	 */
+     * list all the resolutions
+     * run a v4l2-ctl --list-formats-ext
+     * to see the resolution and available frame rate
+     */
     std::cout << get_stdout_from_cmd(
         "v4l2-ctl --device=" + std::string(dev_name) +
         " --list-formats-ext | grep Size | "
         "awk '{print $1 $3}'| sed 's/Size/Resolution/g'");
 
     /** Set the video format. */
-    if (do_set_format) video_set_format(&dev);
+    if (do_set_format)
+      video_set_format(&dev);
     /** Set the frame rate. */
-    if (do_set_time_per_frame) set_frame_rate(dev.fd, time_per_frame);
+    if (do_set_time_per_frame)
+      set_frame_rate(dev.fd, time_per_frame);
 
     /** try to get all the static camera info before fork */
-    if (!is_ov580_stereo()) read_cam_uuid_hwfw_rev(dev.fd);
+    if (!is_ov580_stereo())
+      read_cam_uuid_hwfw_rev(dev.fd);
     check_dev_cap(dev.fd);
     video_get_format(&dev); /** list the current resolution etc */
     resolutions = get_resolutions(&dev);
@@ -184,17 +189,17 @@ int main(int argc, char** argv) {
     printf("********************Control Logs*****************************\n");
     /** Activate streaming */
     start_camera(&dev); // need to be put before fork for shared memory
-    mmap_variables(); // before fork for shared memory
+    mmap_variables();   // before fork for shared memory
     int socket_pair[2];
     if (socketpair(AF_LOCAL, SOCK_STREAM, 0, socket_pair) < 0) {
       std::cout << "socketpair failed" << std::endl;
       return 1;
     }
     pid_t pid = fork();
-    if (pid == 0) { /** child process */
+    if (pid == 0) {          /** child process */
       close(socket_pair[0]); /** read end is unused */
       streaming_loop(&dev, socket_pair[1]);
-    } else if (pid > 0) { /** parent process */
+    } else if (pid > 0) {    /** parent process */
       close(socket_pair[1]); /** write end is unused */
       ctrl_gui_main(socket_pair[0]);
     } else {

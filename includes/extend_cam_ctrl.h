@@ -128,8 +128,7 @@ std::vector<int> get_frame_rates(struct device* dev);
 
 void streaming_loop(struct device* dev, int socket);
 
-void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&)> output,
-                    int pyr_lvl);
+void get_a_frame_p1(struct device* dev, std::function<void(cv::Mat&, double)> output, int pyr_lvl);
 void get_a_frame(struct device* dev);
 
 void soft_ae_enable(int enable);
@@ -174,8 +173,7 @@ void add_edge_thres_val(int edge_low_thres_val_from_gui);
 void switch_on_keys();
 
 // Start P1 stuff
-void decode_and_process_p1(struct device* dev, const void* p, double* cur_time,
-                           cv::Mat& share_img);
+void decode_and_process_p1(struct device* dev, const void* p, cv::Mat& share_img);
 // End P1 stuff
 
 void decode_process_a_frame(struct device* dev, const void* p,
@@ -185,3 +183,9 @@ int video_alloc_buffers(struct device* dev);
 int video_free_buffers(struct device* dev);
 
 void set_loop(int exit);
+
+void p1_set_exposure(int exposure);
+void p1_set_gain(int gain);
+int p1_get_exposure();
+int p1_get_gain();
+void p1_enable_soft_ae(bool);
